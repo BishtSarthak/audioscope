@@ -10,6 +10,9 @@ classifiers = [
   "Programming Language :: Python :: 3",
   "Development Status :: 3 - Alpha"
 ]
+dependencies = [
+    "pytest>=8.4.2",
+]
 
 # Optional CLI
 [project.scripts]

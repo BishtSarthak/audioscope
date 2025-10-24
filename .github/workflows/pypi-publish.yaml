@@ -29,10 +29,8 @@ jobs:
         run: uv --version
 
       # (Optional) Run tests
-      - name: Run tests
-        run: |
-          uv run -m pip install pytest
-          uv run -m pytest -q
+      - name: Run tests (ephemeral)
+        run: uv run --with pytest -m pytest -q
 
       - name: Build sdist + wheel
         run: uv build
