@@ -1,0 +1,88 @@
+name: audioscope-publish
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write   # required for Trusted Publishing (PyPI/TestPyPI)
+
+jobs:
+  build:
+    name: Build package (uv)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        run: pip install uv
+
+      - name: Show uv version
+        run: uv --version
+
+      # (Optional) Run tests
+      - name: Run tests
+        run: |
+          uv run -m pip install pytest
+          uv run -m pytest -q
+
+      - name: Build sdist + wheel
+        run: uv build
+
+      - name: Upload dist as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  publish-testpypi:
+    name: Publish to TestPyPI (alpha/beta)
+    needs: [build]
+    runs-on: ubuntu-latest
+    # if tag contains 'a' or 'b' (PEP 440 pre-releases like 0.0.1a1, 0.1.0b2)
+    if: contains(github.ref_name, 'a') || contains(github.ref_name, 'b')
+    environment: testpypi   # must match your TestPyPI “Pending publisher” environment (optional)
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Publish to TestPyPI (OIDC)
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          packages-dir: dist/
+          # provenance: true  # uncomment if you’ve enabled provenance on TestPyPI
+
+  publish-pypi:
+    name: Publish to PyPI (stable)
+    needs: [build]
+    runs-on: ubuntu-latest
+    if: |
+      !contains(github.ref_name, 'a') &&
+      !contains(github.ref_name, 'b')
+    environment: pypi   # must match your PyPI “Pending publisher” environment when you set it up
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Publish to PyPI (OIDC)
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/
+          # provenance: true  # uncomment after enabling provenance on PyPI
